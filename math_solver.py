@@ -1,8 +1,9 @@
 """
 math_solver.py - Parse and evaluate math equations from the Dingtone game.
 
-Equations are displayed as strings like "1+8=11", "15÷3=5", "7×8=56".
-The solver returns True if the equation is correct, False otherwise.
+Statements are displayed as strings like "1+8=11", "5+2>8", "15÷3=5", "3+3>=6".
+Supports equality (=) and inequality (>, <, >=, <=) operators.
+Returns True if the statement is mathematically correct, False otherwise.
 """
 
 import ast
@@ -34,7 +35,17 @@ _UNOPS = {
     ast.UAdd: op.pos,
 }
 
-_EQ_RE = re.compile(r'^(.+?)=(.+)$')
+# Matches equations (=) and inequalities (>=, <=, >, <)
+# Group 1 = left-hand side, group 2 = operator, group 3 = right-hand side
+_EQ_RE = re.compile(r'^(.+?)(>=|<=|>|<|=)(.+)$')
+
+_CMP_OPS = {
+    '=':  lambda a, b: abs(a - b) < 1e-9,
+    '>':  lambda a, b: a > b,
+    '<':  lambda a, b: a < b,
+    '>=': lambda a, b: a >= b,
+    '<=': lambda a, b: a <= b,
+}
 
 
 def normalize(text: str) -> str:
@@ -73,30 +84,32 @@ def safe_eval(expr: str) -> float:
 
 def solve(equation_text: str) -> bool:
     """
-    Determine whether a math equation is correct.
+    Determine whether a math statement is correct.
 
     Args:
-        equation_text: e.g. "1+8=11", "15÷3=5", "7×8=56"
+        equation_text: e.g. "1+8=11", "5+2>8", "15÷3=5", "3+3>=6"
 
     Returns:
-        True  if the equation is mathematically correct
+        True  if the statement is mathematically correct
         False if it is incorrect
 
     Raises:
-        ValueError if the text cannot be parsed as an equation
+        ValueError if the text cannot be parsed
     """
     text = normalize(equation_text.strip())
     m = _EQ_RE.match(text)
     if not m:
-        raise ValueError(f"No '=' separator found in: {text!r}")
+        raise ValueError(f"No operator found in: {text!r}")
     lhs = safe_eval(m.group(1))
-    rhs = safe_eval(m.group(2))
-    return abs(lhs - rhs) < 1e-9
+    cmp_op = _CMP_OPS[m.group(2)]
+    rhs = safe_eval(m.group(3))
+    return cmp_op(lhs, rhs)
 
 
 if __name__ == '__main__':
     # Quick self-test
     tests = [
+        # equalities
         ("1+8=9",    True),
         ("1+8=11",   False),
         ("15÷3=5",   True),
@@ -104,8 +117,17 @@ if __name__ == '__main__':
         ("7×8=55",   False),
         ("20-4=16",  True),
         ("20-4=15",  False),
-        ("2+2×2=6",  True),    # standard operator precedence: 2+(2*2)=6
+        ("2+2×2=6",  True),    # operator precedence: 2+(2*2)=6
         ("100÷4=25", True),
+        # inequalities
+        ("5+2>8",    False),   # 7 > 8 is False
+        ("5+2>6",    True),    # 7 > 6 is True
+        ("3+3>=6",   True),    # 6 >= 6 is True
+        ("3+3>=7",   False),   # 6 >= 7 is False
+        ("3+3<=5",   False),   # 6 <= 5 is False
+        ("3+3<=6",   True),    # 6 <= 6 is True
+        ("10<5×3",   True),    # 10 < 15 is True
+        ("10<5×2",   False),   # 10 < 10 is False
     ]
     all_pass = True
     for eq, expected in tests:
