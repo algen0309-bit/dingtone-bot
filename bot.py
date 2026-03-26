@@ -24,6 +24,7 @@ Game flow automated:
 """
 
 import argparse
+import html
 import logging
 import re
 import time
@@ -65,8 +66,9 @@ def _texts(d: u2.Device) -> set[str]:
     except Exception as exc:
         log.debug("dump_hierarchy failed: %s", exc)
         return set()
-    # Quick regex scan — much faster than parsing the full XML tree
-    return set(re.findall(r'text="([^"]+)"', xml))
+    # Quick regex scan; html.unescape converts &lt; → <, &gt; → >, &amp; → &, etc.
+    # The UI hierarchy is XML, so '<' in text values is stored as '&lt;'.
+    return set(html.unescape(t) for t in re.findall(r'text="([^"]+)"', xml))
 
 
 def get_state(d: u2.Device) -> State:
