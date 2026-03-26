@@ -48,7 +48,7 @@ log = logging.getLogger(__name__)
 # State detection
 # ---------------------------------------------------------------------------
 # Regex that matches a math equation like "1+8=11", "15÷3=5", "7×8=56"
-_EQ_RE = re.compile(r'[\d].*(>=|<=|>|<|=)[\d]')
+_EQ_RE = re.compile(r'[\d].*(>=|<=|>|<|=)-?[\d]')
 
 
 class State(str, Enum):

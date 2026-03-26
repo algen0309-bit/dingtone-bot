@@ -128,6 +128,10 @@ if __name__ == '__main__':
         ("3+3<=6",   True),    # 6 <= 6 is True
         ("10<5×3",   True),    # 10 < 15 is True
         ("10<5×2",   False),   # 10 < 10 is False
+        # negative numbers on RHS
+        ("8-9>-3",   True),    # -1 > -3 is True
+        ("8-9>-1",   False),   # -1 > -1 is False
+        ("3-5=-2",   True),    # -2 = -2 is True
     ]
     all_pass = True
     for eq, expected in tests:
