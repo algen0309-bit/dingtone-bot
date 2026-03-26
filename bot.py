@@ -5,14 +5,15 @@ Automates the "Games for 100 Credits" mini-game in the Dingtone app via ADB
 using uiautomator2. No mouse/keyboard focus is required; all interaction is
 sent directly to the Android device over ADB.
 
-Usage:
-    python bot.py                          # auto-detect connected device
-    python bot.py --serial emulator-5554   # specific emulator
-    python bot.py --serial 192.168.1.x:5555  # WiFi ADB
+Usage (LDPlayer on PC):
+    python bot.py                  # LDPlayer instance 0  (127.0.0.1:5555)
+    python bot.py --instance 1     # LDPlayer instance 1  (127.0.0.1:5557)
+    python bot.py -s 127.0.0.1:5555  # explicit serial
 
 Prerequisites:
     pip install -r requirements.txt
-    adb devices  (device must be visible)
+    # In LDPlayer: Settings → Others → enable ADB debugging
+    adb connect 127.0.0.1:5555    # connect once; verify with: adb devices
 
 Game flow automated:
     1. LOBBY     → click "Start Game", wait 3 s for game to load
@@ -218,6 +219,16 @@ def run_loop(d: u2.Device) -> None:
 # Entry point
 # ---------------------------------------------------------------------------
 
+# LDPlayer ADB ports: instance 0→5555, instance 1→5557, instance 2→5559, …
+_LDPLAYER_BASE_PORT = 5555
+
+
+def ldplayer_serial(instance: int = 0) -> str:
+    """Return the ADB serial for a given LDPlayer instance index (0-based)."""
+    port = _LDPLAYER_BASE_PORT + instance * 2
+    return f"127.0.0.1:{port}"
+
+
 def connect(serial: str | None = None) -> u2.Device:
     log.info("Connecting to device%s…", f" ({serial})" if serial else "")
     d = u2.connect(serial)
@@ -233,16 +244,39 @@ def connect(serial: str | None = None) -> u2.Device:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Dingtone math-solver bot")
+    parser = argparse.ArgumentParser(
+        description="Dingtone math-solver bot",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=(
+            "LDPlayer examples:\n"
+            "  python bot.py                  # LDPlayer instance 0 (port 5555)\n"
+            "  python bot.py --instance 1     # LDPlayer instance 1 (port 5557)\n"
+            "  python bot.py -s 127.0.0.1:5555\n"
+        ),
+    )
     parser.add_argument(
         "--serial", "-s",
         default=None,
-        help="ADB device serial (e.g. emulator-5554 or 192.168.x.x:5555). "
-             "Omit to auto-detect the only connected device.",
+        help="ADB serial override (e.g. 127.0.0.1:5555). "
+             "If omitted, uses LDPlayer instance selected by --instance.",
+    )
+    parser.add_argument(
+        "--instance", "-i",
+        type=int,
+        default=0,
+        help="LDPlayer instance index (0-based). Instance 0 → port 5555, "
+             "instance 1 → port 5557, etc. Ignored if --serial is given.",
     )
     args = parser.parse_args()
 
-    d = connect(args.serial)
+    serial = args.serial or ldplayer_serial(args.instance)
+    log.info(
+        "Target: LDPlayer instance %d  (%s)",
+        args.instance if not args.serial else -1,
+        serial,
+    )
+
+    d = connect(serial)
     log.info("Starting automation loop. Press Ctrl+C to stop.")
     try:
         run_loop(d)
